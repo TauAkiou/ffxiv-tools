@@ -28,6 +28,18 @@ fi
 
 wine64 wineboot -fs &>/dev/null
 
+echo 'Do you want to install FFXIVQuickLauncher?'
+echo 'This is a custom launcher for FFXIV that provides extra functionality.'
+echo 'More information can be found at: https://github.com/goatcorp/FFXIVQuickLauncher'
+echo ''
+
+PROMPT_OPTIONAL "Install FFXIVQuickLauncher?"
+if [ $? == 1 ]; then
+	XIVQL=true
+else
+	XIVQL=false
+fi
+
 PROTON_VERSION_FULL="$(cat "$PROTON_DIST_PATH/version" | cut -d' ' -f2 | cut -d'-' -f1)"
 PROTON_VERSION_MAJOR="$(echo "$PROTON_VERSION_FULL" | cut -d'.' -f1)"
 PROTON_VERSION_MINOR="$(echo "$PROTON_VERSION_FULL" | cut -d'.' -f2)"
@@ -37,6 +49,7 @@ echo 'Please make backups of both!'
 echo "wine prefix: $WINEPREFIX"
 echo "Proton distribution: $PROTON_DIST_PATH"
 echo "Proton version: ${PROTON_VERSION_MAJOR}.${PROTON_VERSION_MINOR}"
+echo "Installing FFXIVQuickLauncher: $FFXIVQL"
 
 PROMPT_BACKUP
 
@@ -74,34 +87,76 @@ DOTNET_VS_461='{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033|||Microsoft .NET Fr
 DOTNET_VS_462='{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033|||Microsoft .NET Framework 4.6.2'
 DOTNET_VS_471='{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033|||Microsoft .NET Framework 4.7.1'
 DOTNET_VS_472='{92FB6C44-E685-45AD-9B20-CADF4CABA132}.KB4087364|||Update for Microsoft .NET Framework 4.7.2 (KB4087364)'
+DOTNET_VS_48='{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033|||Microsoft .NET Framework 4.8'
 
-if [[ "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_472")" == "$DOTNET_VS_472" ]]; then
+if [[ "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_48")" == "$DOTNET_VS_48" ]]; then
+    success 'Found .NET Framework 4.8 in wine prefix'
+elif [[ "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_472")" == "$DOTNET_VS_472" ]] && [[ "$XIVQL" == false ]]; then
     success 'Found .NET Framework 4.7.2 in wine prefix'
 else
-    warn 'Could not find .NET Framework 4.7.2, determining where we need to start the installation process'
+    if [[ "$XIVQL" = true ]]; then
+	    DOTNETVERSION="4.8"
+    else
+	    DOTNETVERSION="4.7.2"
+    fi
+
+    warn "Could not find .NET Framework $DOTNETVERSION, determining where we need to start the installation process"
     WINETRICKS_DOTNET_PACKAGES=""
-    if [[ "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_471")" == "$DOTNET_VS_471" ]]; then
-        echo 'Detected .NET Framework 4.7.1, only need to install 4.7.2'
-        WINETRICKS_DOTNET_PACKAGES="dotnet472"
+        
+    if [[ "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_472")" == "$DOTNET_VS_472"]] && [["$XIVQL" == true ]]; then
+        echo 'Detected .NET Framework 4.7.2, only need to install 4.8'
+        WINETRICKS_DOTNET_PACKAGES="dotnet48"
+    elif [[ "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_471")" == "$DOTNET_VS_471" ]]; then
+	    if [[ "$XIVQL" = true ]]; then
+        	echo 'Detected .NET Framework 4.7.1, starting install with 4.7.2'
+		    WINETRICKS_DOTNET_PACKAGES="dotnet472 dotnet48"
+	    else
+        	WINETRICKS_DOTNET_PACKAGES="dotnet472"
+	    fi
     elif [[ "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_462")" == "$DOTNET_VS_462" ]]; then
         echo 'Detected .NET Framework 4.6.2, starting install with 4.7.1'
-        WINETRICKS_DOTNET_PACKAGES="dotnet471 dotnet472"
+	    if [[ "$XIVQL" = true ]]; then
+	            WINETRICKS_DOTNET_PACKAGES="dotnet471 dotnet472 dotnet48"
+	    else
+		    WINETRICKS_DOTNET_PACKAGES="dotnet471 dotnet472"
+	    fi
     elif [[ "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_461")" == "$DOTNET_VS_461" ]]; then
         echo 'Detected .NET Framework 4.6.1, starting install with 4.6.2'
-        WINETRICKS_DOTNET_PACKAGES="dotnet462 dotnet471 dotnet472"
+	    if [ "$XIVQL" = true ]; then
+	        WINETRICKS_DOTNET_PACKAGES="dotnet462 dotnet471 dotnet472 dotnet48"
+	    else
+		    WINETRICKS_DOTNET_PACKAGES="dotnet462 dotnet471 dotnet472"
+	    fi
     elif [[ "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_46")" == "$DOTNET_VS_46" ]]; then
         echo 'Detected .NET Framework 4.6, starting install with 4.6.1'
-        WINETRICKS_DOTNET_PACKAGES="dotnet461 dotnet462 dotnet471 dotnet472"
+	    if [[ "$XIVQL" = true ]]; then
+	        WINETRICKS_DOTNET_PACKAGES="dotnet461 dotnet462 dotnet471 dotnet472 dotnet48"
+	    else
+		    WINETRICKS_DOTNET_PACKAGES="dotnet461 dotnet462 dotnet471 dotnet472"
+	    fi
     elif [[ "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_452")" == "$DOTNET_VS_452" ]]; then
         echo 'Detected .NET Framework 4.5.2, starting install with 4.6'
-        WINETRICKS_DOTNET_PACKAGES="dotnet46 dotnet461 dotnet462 dotnet471 dotnet472"
+	    if [[ "$XIVQL" = true ]]; then
+	        WINETRICKS_DOTNET_PACKAGES="dotnet46 dotnet461 dotnet462 dotnet471 dotnet472 dotnet48"
+	    else
+		    WINETRICKS_DOTNET_PACKAGES="dotnet46 dotnet461 dotnet462 dotnet471 dotnet472"
+	    fi
     elif [[ "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_40_C")" == "$DOTNET_VS_40_C" && "$(echo "$WINE_INSTALLED_PACKAGES" | grep "$DOTNET_VS_40_E")" == "$DOTNET_VS_40_E" ]]; then
         echo 'Detected .NET Framework 4.0, starting install with 4.5.2'
-        WINETRICKS_DOTNET_PACKAGES="dotnet452 dotnet46 dotnet461 dotnet462 dotnet471 dotnet472"
+	    if [[ "$XIVQL" = true ]]; then
+	        WINETRICKS_DOTNET_PACKAGES="dotnet452 dotnet46 dotnet461 dotnet462 dotnet471 dotnet472 dotnet48"
+	    else
+		    WINETRICKS_DOTNET_PACKAGES="dotnet452 dotnet46 dotnet461 dotnet462 dotnet471 dotnet472"
+	    fi
     fi
+    
     if [[ "$WINETRICKS_DOTNET_PACKAGES" == "" ]]; then
-        echo 'No .NET Framework packages detected, starting from 4.0'
-        WINETRICKS_DOTNET_PACKAGES="dotnet40 dotnet452 dotnet46 dotnet461 dotnet462 dotnet471 dotnet472"
+            echo 'No .NET Framework packages detected, starting from 4.0'
+	        if [[ "$XIVQL" = true ]]; then
+	            WINETRICKS_DOTNET_PACKAGES="dotnet40 dotnet452 dotnet46 dotnet461 dotnet462 dotnet471 dotnet472 dotnet48"
+	        else
+		        WINETRICKS_DOTNET_PACKAGES="dotnet40 dotnet452 dotnet46 dotnet461 dotnet462 dotnet471 dotnet472"
+	        fi
     fi
     echo 'Please continue through the install prompts for each .NET Framework installer'
     echo 'If prompted to restart by the installer, please choose Yes. This will only restart the wine server and is required for the .NET Framework to install properly'
@@ -134,6 +189,50 @@ else
     success "Found ACT location at $ACT_LOCATION"
     echo "Saving this path to $WINEPREFIX/.ACT_Location for future use"
     echo "$ACT_LOCATION" > "$WINEPREFIX/.ACT_Location"
+fi
+
+if [ "$XIVQL" = true ]; then 
+	echo 'Checking for FXIVQuickLauncher install'
+	
+	if [ -f "$WINEPREFIX/.XIVQL_Location" ]; then
+	    FFXIVQL_LOCATION="$(cat "$WINEPREFIX/.FFXIVQL_Location")"
+	else
+	    warn "Setup hasn't been run on this wine prefix before"
+	    echo "Searching for the FFXIVQuickLauncher install may take some time if this prefix has been highly customized."
+	    PROMPT_CONTINUE
+	
+	    TEMP_FFXIVQL_LOCATION="$(find $WINEPREFIX -name 'XIVLauncher.exe' | head -n 1)"
+
+	    if [[ "$TEMP_FFXIVQL_LOCATION" == "" ]]; then
+	        war: 'Could not find an FFXIVQuickLauncher install, downloading and installing latest version'
+	        PROMPT_CONTINUE
+	        wget -O "/tmp/Setup.exe" "https://github.com/goatcorp/FFXIVQuickLauncher/releases/latest/download/Setup.exe" &> /dev/null
+	
+		echo "Setting DisableHWAcceleration registry key."
+		
+	        echo <<- EOF > dhwa.reg
+		Windows Registry Editor Version 5.00
+		[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Avalon.Graphics]
+		DisableHWAcceleration"=dword:00000001"
+		EOF
+	
+		wine64 regedit /tmp/dhwa.reg
+	    
+        echo "Follow the onscreen instructions to install FFXIVQuickLauncher"
+        echo "Do not continue with the process until the launcher is installed."
+		wine /tmp/Setup.exe
+		sleep 5
+		echo "Scanning for FFXIVQuickLauncher install location."				
+	    	TEMP_FFXIVQL_LOCATION="$(find $WINEPREFIX -name 'XIVLauncher.exe' | head -n 1)"
+
+	        FFXIVQL_LOCATION="$(dirname "$TEMP_FFXIVQL_LOCATION")"
+	    else
+	        FFXIVQL_LOCATION="$(dirname "$TEMP_FFXIVQL_LOCATION")"
+	    fi
+	    success "Found FFXIVQuickLauncher location at $FFXIVQL_LOCATION"
+	    echo "Saving this path to $WINEPREFIX/.FFXIVQL_Location for future use"
+	    echo "$FFXIVQL_LOCATION" > "$WINEPREFIX/.FFXIVQL_Location"
+	fi
 fi
 
 echo "Making sure wine isn't running anything"

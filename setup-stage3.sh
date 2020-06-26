@@ -28,6 +28,7 @@ echo "Current script version: $SCRIPT_VERSION."
 echo
 
 HAS_PATH="$(grep -P 'FFXIV_PATH="' $HOME/bin/ffxiv-env-setup.sh | wc -l)"
+HAS_PREFIX=
 
 if [[ "$HAS_PATH" != "1" ]]; then
     error "Your $HOME/bin/ffxiv-env-setup.sh script does not have a FFXIV_PATH variable."
@@ -36,6 +37,15 @@ if [[ "$HAS_PATH" != "1" ]]; then
     echo "export FFXIV_PATH=\"/home/valarnin/.local/share/Steam/steamapps/common/FINAL FANTASY XIV Online\""
     exit 1
 fi
+
+WINEPREFIX=$(grep -Po '(?<=WINEPREFIX=")(.*)(?=")' $HOME/bin/ffxiv-env-setup.sh)
+
+if [[ -f "$WINEPREFIX/.FFXIVQL_Location" ]]; then
+	echo "FFXIVQL is installed in prefix."
+	HAS_XIVQL=1
+fi
+
+
 
 IS_STEAM="$(grep -P 'IS_STEAM="?1"?' $HOME/bin/ffxiv-env-setup.sh | wc -l)"
 
@@ -82,6 +92,9 @@ wine64 "\$(cat \$WINEPREFIX/.ACT_Location)/Advanced Combat Tracker.exe"
 EOF
 )
 
+
+
+
 SCRIPT_FILE_GAME="$HOME/bin/ffxiv-run-game.sh"
 SCRIPT_FILE_ACT="$HOME/bin/ffxiv-run-act.sh"
 SCRIPT_FILE_BOTH="$HOME/bin/ffxiv-run-both.sh"
@@ -121,4 +134,56 @@ else
     echo "Skipping the file"
 fi
 
+echo "Generating non-standard scripts... (FFXIVQuicklauncher, etc)"
+
+if [[ "$HAS_XIVQL" = 1 ]]; then
+	SCRIPT_START_XIVQL=$(cat << EOF
+$SCRIPT_HEADER
+
+. $HOME/bin/ffxiv-env-setup.sh
+cd \$WINEPREFIX
+wine "$(cat $WINEPREFIX/.FFXIVQL_Location)/XIVLauncher.exe"
+EOF
+)
+
+SCRIPT_START_XIVQL_BOTH=$(cat << EOF
+$SCRIPT_HEADER
+
+. $HOME/bin/ffxiv-env-setup.sh
+cd \$WINEPREFIX
+wine "$(cat $WINEPREFIX/.FFXIVQL_Location)/XIVLauncher.exe"
+sleep 5
+wine64 "\$(cat \$WINEPREFIX/.ACT_Location)/Advanced Combat Tracker.exe"
+EOF
+)
+
+SCRIPT_FILE_XIVQL="$HOME/bin/ffxiv-run-xivql.sh"
+SCRIPT_FILE_XIVQL_BOTH="$HOME/bin/ffxiv-run-xivql-both.sh"
+
+echo "Checking for local changes to $SCRIPT_FILE_XIVQL..."
+
+should_overwrite "$SCRIPT_FILE_XIVQL"
+if [[ "$?" == "0" ]]; then
+    echo "Writing the file"
+    echo "$SCRIPT_START_XIVQL" > "$SCRIPT_FILE_XIVQL"
+    chmod +x "$SCRIPT_FILE_XIVQL"
+else
+    echo "Skipping the file"
+fi
+
+echo "Checking for local changes to $SCRIPT_FILE_XIVQL_BOTH..."
+
+should_overwrite "$SCRIPT_FILE_XIVQL_BOTH"
+if [[ "$?" == "0" ]]; then
+    echo "Writing the file"
+    echo "$SCRIPT_START_XIVQL_BOTH" > "$SCRIPT_FILE_XIVQL_BOTH"
+    chmod +x "$SCRIPT_FILE_XIVQL_BOTH"
+else
+    echo "Skipping the file"
+fi
+
+fi
+
 PROMPT_DESKTOP_ENTRIES
+
+PROMPT_DESKTOP_XIVQL
